@@ -1,0 +1,14 @@
+{
+  "name": "dolfinx-gas-sim",
+  "dockerComposeFile": "../compose.yml",
+  "service": "dolfinx",
+  "workspaceFolder": "/work",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+      ]
+    }
+  }
+}
