@@ -43,8 +43,8 @@ static const double FE0_C0_D01_Q083[1][1][1][3] = {{{{-1.0, 0.0, 1.0}}}};
 static const double FE1_C0_D10_Q083[1][1][1][3] = {{{{-1.0, 1.0, 0.0}}}};
 // ------------------------ 
 // Section: Jacobian
-// Inputs: FE0_C0_D01_Q083, FE1_C0_D10_Q083, coordinate_dofs
-// Outputs: J0_c3, J0_c1, J0_c0, J0_c2
+// Inputs: FE1_C0_D10_Q083, coordinate_dofs, FE0_C0_D01_Q083
+// Outputs: J0_c1, J0_c2, J0_c0, J0_c3
 double J0_c0 = 0.0;
 double J0_c3 = 0.0;
 double J0_c1 = 0.0;
@@ -102,7 +102,7 @@ for (int iq = 0; iq < 1; ++iq)
   // ------------------------ 
   // ------------------------ 
   // Section: Tensor Computation
-  // Inputs: fw1, FE1_C0_D10_Q083, fw2, fw0, FE0_C0_D01_Q083
+  // Inputs: FE1_C0_D10_Q083, FE0_C0_D01_Q083, fw1, fw2, fw0
   // Outputs: A
   {
     double temp_0[3] = {0};
@@ -178,8 +178,8 @@ static const double FE1_C0_D10_Q48e[1][1][1][3] = {{{{-1.0, 1.0, 0.0}}}};
 static const double FE1_C1_D01_Q48e[1][1][1][3] = {{{{-1.0, 0.0, 1.0}}}};
 // ------------------------ 
 // Section: Jacobian
-// Inputs: FE1_C0_D10_Q48e, coordinate_dofs, FE1_C1_D01_Q48e
-// Outputs: J0_c3, J0_c1, J0_c0, J0_c2
+// Inputs: coordinate_dofs, FE1_C1_D01_Q48e, FE1_C0_D10_Q48e
+// Outputs: J0_c1, J0_c2, J0_c0, J0_c3
 double J0_c0 = 0.0;
 double J0_c3 = 0.0;
 double J0_c1 = 0.0;
@@ -203,7 +203,7 @@ for (int iq = 0; iq < 3; ++iq)
 {
   // ------------------------ 
   // Section: Coefficient
-  // Inputs: FE0_C0_Q48e, w
+  // Inputs: w, FE0_C0_Q48e
   // Outputs: w0
   double w0 = 0.0;
   {
@@ -284,8 +284,8 @@ static const double triangle_cell_facet_jacobian[3][2][1] = {{{-1.0},
   {0.0}}};
 // ------------------------ 
 // Section: Jacobian
-// Inputs: coordinate_dofs, FE1_C0_D10_F_Q4a8, FE1_C0_D01_F_Q4a8
-// Outputs: J0_c3, J0_c1, J0_c0, J0_c2
+// Inputs: coordinate_dofs, FE1_C0_D01_F_Q4a8, FE1_C0_D10_F_Q4a8
+// Outputs: J0_c1, J0_c2, J0_c0, J0_c3
 double J0_c0 = 0.0;
 double J0_c1 = 0.0;
 double J0_c2 = 0.0;
@@ -336,7 +336,7 @@ for (int iq = 0; iq < 2; ++iq)
   // ------------------------ 
   // ------------------------ 
   // Section: Tensor Computation
-  // Inputs: fw0, FE0_C0_F_Q4a8
+  // Inputs: FE0_C0_F_Q4a8, fw0
   // Outputs: A
   {
     for (int i = 0; i < 3; ++i)

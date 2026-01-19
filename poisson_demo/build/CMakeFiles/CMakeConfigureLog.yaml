@@ -3985,3 +3985,111 @@ events:
         
       exitCode: 0
 ...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1447 (try_compile)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1491 (_MPI_try_staged_settings)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1814 (_MPI_check_lang_works)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
+      - "/usr/local/dolfinx-real/lib/cmake/dolfinx/DOLFINXConfig.cmake:35 (find_dependency)"
+      - "CMakeLists.txt:11 (find_package)"
+    description: "The MPI test test_mpi for C in mode normal"
+    directories:
+      source: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8"
+      binary: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_C_test_mpi_normal"
+      cached: true
+      stdout: |
+        Change Dir: '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8'
+        
+        Run Build Command(s): /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4ebc9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_4ebc9.dir/build.make CMakeFiles/cmTC_4ebc9.dir/build
+        gmake[1]: Entering directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8'
+        Building C object CMakeFiles/cmTC_4ebc9.dir/test_mpi.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_4ebc9.dir/test_mpi.c.o -c /work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8/test_mpi.c
+        Linking C executable cmTC_4ebc9
+        /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4ebc9.dir/link.txt --verbose=1
+        /usr/bin/cc -Wl,-rpath -Wl,/usr/local/lib -Wl,--enable-new-dtags CMakeFiles/cmTC_4ebc9.dir/test_mpi.c.o -o cmTC_4ebc9  -Wl,-rpath,/usr/local/lib /usr/local/lib/libmpi.so
+        gmake[1]: Leaving directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-PjN9V8'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1447 (try_compile)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1491 (_MPI_try_staged_settings)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1814 (_MPI_check_lang_works)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
+      - "/usr/local/dolfinx-real/lib/cmake/dolfinx/DOLFINXConfig.cmake:35 (find_dependency)"
+      - "CMakeLists.txt:11 (find_package)"
+    description: "The MPI test test_mpi for CXX in mode normal"
+    directories:
+      source: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V"
+      binary: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_CXX_test_mpi_normal"
+      cached: true
+      stdout: |
+        Change Dir: '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V'
+        
+        Run Build Command(s): /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d3252/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d3252.dir/build.make CMakeFiles/cmTC_d3252.dir/build
+        gmake[1]: Entering directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V'
+        Building CXX object CMakeFiles/cmTC_d3252.dir/test_mpi.cpp.o
+        /usr/bin/c++    -o CMakeFiles/cmTC_d3252.dir/test_mpi.cpp.o -c /work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V/test_mpi.cpp
+        Linking CXX executable cmTC_d3252
+        /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d3252.dir/link.txt --verbose=1
+        /usr/bin/c++ -Wl,-rpath -Wl,/usr/local/lib -Wl,--enable-new-dtags CMakeFiles/cmTC_d3252.dir/test_mpi.cpp.o -o cmTC_d3252  -Wl,-rpath,/usr/local/lib /usr/local/lib/libmpicxx.so /usr/local/lib/libmpi.so
+        gmake[1]: Leaving directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-5v0X7V'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1447 (try_compile)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/FindMPI.cmake:1841 (_MPI_try_staged_settings)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
+      - "/dolfinx-env/lib/python3.12/site-packages/cmake/data/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
+      - "/usr/local/dolfinx-real/lib/cmake/dolfinx/DOLFINXConfig.cmake:35 (find_dependency)"
+      - "CMakeLists.txt:11 (find_package)"
+    description: "The MPI test test_mpi for CXX in mode MPICXX"
+    directories:
+      source: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd"
+      binary: "/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_CXX_test_mpi_MPICXX"
+      cached: true
+      stdout: |
+        Change Dir: '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd'
+        
+        Run Build Command(s): /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7dbd5/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7dbd5.dir/build.make CMakeFiles/cmTC_7dbd5.dir/build
+        gmake[1]: Entering directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd'
+        Building CXX object CMakeFiles/cmTC_7dbd5.dir/test_mpi.cpp.o
+        /usr/bin/c++    -o CMakeFiles/cmTC_7dbd5.dir/test_mpi.cpp.o -c /work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd/test_mpi.cpp
+        Linking CXX executable cmTC_7dbd5
+        /dolfinx-env/lib/python3.12/site-packages/cmake/data/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7dbd5.dir/link.txt --verbose=1
+        /usr/bin/c++ -Wl,-rpath -Wl,/usr/local/lib -Wl,--enable-new-dtags CMakeFiles/cmTC_7dbd5.dir/test_mpi.cpp.o -o cmTC_7dbd5  -Wl,-rpath,/usr/local/lib /usr/local/lib/libmpicxx.so /usr/local/lib/libmpi.so
+        gmake[1]: Leaving directory '/work/poisson_demo/build/CMakeFiles/CMakeScratch/TryCompile-a3Tasd'
+        
+      exitCode: 0
+...
