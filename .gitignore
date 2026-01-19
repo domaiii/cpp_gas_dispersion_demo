@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+# further temporary files
+*.pvd
+*.vtu
+*.pvtu
+/build/
+build/
