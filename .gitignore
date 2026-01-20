@@ -42,6 +42,7 @@
 
 # further temporary files
 *.pvd
+*.bp
 *.vtu
 *.pvtu
 /build/
