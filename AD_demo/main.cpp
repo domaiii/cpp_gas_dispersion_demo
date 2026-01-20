@@ -211,8 +211,23 @@ int main(int argc, char* argv[])
   auto V2 = std::make_shared<fem::FunctionSpace<U>>(
       fem::create_functionspace<U>(mesh, elem_V2));
 
+<<<<<<< HEAD
   PetscTime(&t1);
   t_mesh = t1 - t0;
+=======
+    // Define variational forms
+    fem::Form<T> a = fem::create_form<T>(*form_adv_diff_a, {V, V}, {{"beta", beta}},
+                                         {{"D_phys", D_phys}, {"L_char", L_char}}, 
+                                         {}, {}, cmesh);
+    fem::Form<T> L = fem::create_form<T>(*form_adv_diff_L, {V},
+                                         {{"f", f}, {"beta", beta}}, 
+                                         {{"D_phys", D_phys}, {"L_char", L_char}},
+                                         {}, {}, cmesh);
+    
+    // Now, the Dirichlet boundary condition ($u = 0$) can be created
+    // using the class {cpp:class}`DirichletBC`
+    // Define boundary conditions, source function and wind field
+>>>>>>> 532b795 (Comment file saving)
 
   auto D_phys = std::make_shared<fem::Constant<T>>(D);
   auto L_char = std::make_shared<fem::Constant<T>>(len);
@@ -362,12 +377,20 @@ int main(int argc, char* argv[])
     // Update ghost values before output
     u->x()->scatter_fwd();
 
+<<<<<<< HEAD
 >>>>>>> f78897a (reduced example)
 #ifdef HAS_ADIOS2
     std::string bname = "u_" + std::to_string(k) + ".bp";
     io::VTXWriter<U> vtx(MPI_COMM_WORLD, bname, {u}, "bp4");
     vtx.write(0);
 #endif
+=======
+// #ifdef HAS_ADIOS2
+//    // Save solution in VTX format
+//    io::VTXWriter<U> vtx(MPI_COMM_WORLD, "u.bp", {u}, "bp4");
+//    vtx.write(0);
+// #endif
+>>>>>>> 532b795 (Comment file saving)
   }
 
   double t_mesh_max = 0.0, t_assembly_max = 0.0, t_solve_max = 0.0;
