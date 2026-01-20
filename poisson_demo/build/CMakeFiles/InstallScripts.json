@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/work/poisson_demo/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
