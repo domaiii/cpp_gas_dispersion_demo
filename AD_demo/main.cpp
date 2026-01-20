@@ -7,6 +7,7 @@
 #include <dolfinx/fem/petsc.h>
 #include <petscmat.h>
 #include <petscsys.h>
+<<<<<<< HEAD
 #include <petsctime.h>
 #include <petscsystypes.h>
 #include <utility>
@@ -17,6 +18,10 @@
 #include <random>
 #include <iostream>
 #include <ranges>
+=======
+#include <vector>
+#include <algorithm>
+>>>>>>> f78897a (reduced example)
 
 using namespace dolfinx;
 using T = PetscScalar;
@@ -156,11 +161,22 @@ int main(int argc, char* argv[])
   PetscLogDouble t_assembly_sum = 0.0;
   PetscLogDouble t_solve_sum = 0.0;
 
+<<<<<<< HEAD
   PetscLogDouble t0, t1;
   PetscTime(&t0);
 
   // Create mesh and function space
   auto part = mesh::create_cell_partitioner(mesh::GhostMode::shared_facet);
+=======
+    // Rectangle discretization
+    auto cell_dicretization = std::array<std::int64_t, 2>{500, 500};
+
+    // Parameters for gaussian source
+    const T x0 = 0.2 * len;   // center x
+    const T y0 = 0.3 * wid;   // center y
+    const T amp = 1.0;        // amplitude
+    const T s2 = 0.005;       // sigma^2
+>>>>>>> f78897a (reduced example)
 
   // Domain size
   const T len = static_cast<T>(p.len);
@@ -307,8 +323,12 @@ int main(int argc, char* argv[])
           return {values, {n}};
         });
 
+<<<<<<< HEAD
     PetscTime(&t0);
     std::ranges::fill(b.array(), 0);
+=======
+    std::fill(b.array().begin(), b.array().end(), T(0));
+>>>>>>> f78897a (reduced example)
     fem::assemble_vector(b.array(), L);
     fem::apply_lifting(b.array(), {a}, {{bc}}, {}, T(1));
     b.scatter_rev(std::plus<T>());
@@ -316,6 +336,7 @@ int main(int argc, char* argv[])
     PetscTime(&t1);
     t_assembly_sum += (t1 - t0);
 
+<<<<<<< HEAD
     PetscTime(&t0);
     solver.solve(_u.vec(), _b.vec());
     PetscTime(&t1);
@@ -327,6 +348,21 @@ int main(int argc, char* argv[])
     io::VTKFile file(MPI_COMM_WORLD, fname, "w");
     file.write<T>({*u}, 0);
 
+=======
+    la::petsc::KrylovSolver solver(MPI_COMM_WORLD);
+    la::petsc::options::set("ksp_type", "gmres");
+    la::petsc::options::set("pc_type", "jacobi");
+    solver.set_from_options();
+
+    solver.set_operator(A.mat());
+    la::petsc::Vector _u(la::petsc::create_vector_wrap(*u->x()), false);
+    la::petsc::Vector _b(la::petsc::create_vector_wrap(b), false);
+    solver.solve(_u.vec(), _b.vec());
+
+    // Update ghost values before output
+    u->x()->scatter_fwd();
+
+>>>>>>> f78897a (reduced example)
 #ifdef HAS_ADIOS2
     std::string bname = "u_" + std::to_string(k) + ".bp";
     io::VTXWriter<U> vtx(MPI_COMM_WORLD, bname, {u}, "bp4");
