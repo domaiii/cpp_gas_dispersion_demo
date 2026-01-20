@@ -12,14 +12,124 @@
 #include <petscsystypes.h>
 #include <utility>
 #include <vector>
+#include <charconv>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 
 using namespace dolfinx;
 using T = PetscScalar;
 using U = typename dolfinx::scalar_value_t<T>;
 
+struct Params
+{
+  // Domain
+  double len = 50.0;
+  double wid = 50.0;
+
+  // Mesh discretization
+  std::int64_t nx = 100;
+  std::int64_t ny = 100;
+
+  // double amp = 1.0;
+  // double sigma2 = 1.0;
+
+  // Physics
+  double wind_x = 0.0;
+  double wind_y = 1.0;
+  double D = 0.5;
+
+};
+
+// int parser
+static std::int64_t parse_i64(std::string_view s, const char* name)
+{
+  std::int64_t v{};
+  auto res = std::from_chars(s.data(), s.data() + s.size(), v);
+  if (res.ec != std::errc() || res.ptr != s.data() + s.size())
+    throw std::runtime_error(std::string("Invalid value for ") + name + ": " + std::string(s));
+  return v;
+}
+
+// double parser
+static double parse_f64(std::string_view s, const char* name)
+{
+  try
+  {
+    size_t idx = 0;
+    std::string tmp(s);
+    double v = std::stod(tmp, &idx);
+    if (idx != tmp.size())
+      throw std::runtime_error("trailing");
+    return v;
+  }
+  catch (...)
+  {
+    throw std::runtime_error(std::string("Invalid value for ") + name + ": " + std::string(s));
+  }
+}
+
+static Params parse_args_strip(int& argc, char* argv[])
+{
+  Params p;
+
+  auto need_value = [&](int& i, const char* opt) -> std::string_view {
+    if (i + 1 >= argc)
+      throw std::runtime_error(std::string("Missing value for ") + opt);
+    return std::string_view(argv[++i]);
+  };
+
+  int out = 1;
+
+  for (int i = 1; i < argc; ++i)
+  {
+    std::string_view a(argv[i]);
+
+    if (a == "--len")
+      p.len = parse_f64(need_value(i, "--len"), "len");
+    else if (a == "--wid")
+      p.wid = parse_f64(need_value(i, "--wid"), "wid");
+    else if (a == "--nx")
+      p.nx = parse_i64(need_value(i, "--nx"), "nx");
+    else if (a == "--ny")
+      p.ny = parse_i64(need_value(i, "--ny"), "ny");
+    else if (a == "--windx")
+      p.wind_x = parse_f64(need_value(i, "--windx"), "windx");
+    else if (a == "--windy")
+      p.wind_y = parse_f64(need_value(i, "--windy"), "windy");
+    else if (a == "--D")
+      p.D = parse_f64(need_value(i, "--D"), "D");
+    else if(a.starts_with("--"))
+      throw std::runtime_error("Unknown option: " + std::string(a));
+    else
+      // unknown arg -> pass to PETSc
+      argv[out++] = argv[i];
+  }
+  argc = out;
+
+  // minimal sanity checks
+  if (p.len <= 0 || p.wid <= 0)
+    throw std::runtime_error("len and wid must be > 0");
+  if (p.nx <= 0 || p.ny <= 0)
+    throw std::runtime_error("nx and ny must be positive integers");
+  if (p.D <= 0)
+    throw std::runtime_error("D must be > 0");
+
+  return p;
+}
 
 int main(int argc, char* argv[])
 {
+  Params p;
+  try
+  {
+    p = parse_args_strip(argc, argv);
+  }
+  catch(const std::exception& e)
+  {
+    std::cerr << "Argument error: " << e.what() << '\n';
+    return 2;
+  }
   dolfinx::init_logging(argc, argv);
   PetscInitialize(&argc, &argv, nullptr, nullptr);
 
@@ -40,11 +150,11 @@ int main(int argc, char* argv[])
     auto part = mesh::create_cell_partitioner(mesh::GhostMode::shared_facet);
 
     // Domain size
-    T len = 50.0;
-    T wid = 50.0;
+    T len = static_cast<T>(p.len);
+    T wid = static_cast<T>(p.wid);
 
     // Rectangle discretization
-    auto cell_dicretization = std::array<std::int64_t, 2>{1000, 1000};
+    auto cell_dicretization = std::array<std::int64_t, 2>{p.nx, p.ny};
 
     // Parameters for gaussian source
     const T x0 = 0.5 * len;   // center x
@@ -53,11 +163,11 @@ int main(int argc, char* argv[])
     const T s2 = 0.005 * wid;        // sigma^2
 
     // Wind speeds (constant, uniform)
-    const T wind_x = 0.0;
-    const T wind_y = 1.0;
+    const T wind_x = static_cast<T>(p.wind_x);
+    const T wind_y = static_cast<T>(p.wind_y);
 
     // Diffusion constant
-    const T D = 0.5;
+    const T D = static_cast<T>(p.D);
 
     auto mesh = std::make_shared<mesh::Mesh<U>>(
         mesh::create_rectangle<U>(MPI_COMM_WORLD, {{{0.0, 0.0}, {len, wid}}},
@@ -237,7 +347,7 @@ int main(int argc, char* argv[])
     std::cout << "MPI processes       : " << nrank << "\n";
     std::cout << "Mesh + spaces setup : " << t_mesh_max     << " s\n";
     std::cout << "Assembly            : " << t_assembly_max << " s\n";
-    std::cout << "Solve (LU)           : " << t_solve_max    << " s\n";
+    std::cout << "Solve (GMRES)       : " << t_solve_max    << " s\n";
     std::cout << "======================\n\n";
   }
 
