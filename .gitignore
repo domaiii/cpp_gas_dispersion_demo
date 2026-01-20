@@ -47,4 +47,5 @@
 *.pvtu
 /build/
 build/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
