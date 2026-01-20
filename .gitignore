@@ -40,10 +40,11 @@
 # debug information files
 *.dwo
 
-# further temporary files
+# further temporary/local files
 *.pvd
 *.bp
 *.vtu
 *.pvtu
 /build/
 build/
+.vscode/
