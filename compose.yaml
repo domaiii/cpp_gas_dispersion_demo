@@ -1,0 +1,7 @@
+services:
+  dolfinx:
+    image: ghcr.io/fenics/dolfinx/dolfinx:nightly
+    working_dir: /work
+    volumes:
+      - ./:/work
+    tty: true
