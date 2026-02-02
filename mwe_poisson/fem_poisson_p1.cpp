@@ -6,38 +6,38 @@
 #include <cstddef>
 #include <chrono>
 
-static constexpr int NX = 500; // cells in x
-static constexpr int NY = 500; // cells in y
+static constexpr int NX = 75; // cells in x
+static constexpr int NY = 75; // cells in y
 
 // Interior unknowns
 static constexpr int NXI = NX - 1;
 static constexpr int NYI = NY - 1;
 static constexpr int N   = NXI * NYI;
 
-static constexpr double h   = 1.0 / double(NX);
-static constexpr double ih2 = 1.0 / (h * h);
+static constexpr float h   = 1.0 / float(NX);
+static constexpr float ih2 = 1.0 / (h * h);
 
-static double x[N];   // solution
-static double b[N];   // RHS
-static double r[N];   // CG residual
-static double p[N];   // CG search direction
-static double Ap[N];  // CG vector
+static float x[N];   // solution
+static float b[N];   // RHS
+static float r[N];   // CG residual
+static float p[N];   // CG search direction
+static float Ap[N];  // CG vector
 
-static inline double dot(const double* a, const double* c) {
-    double s = 0.0;
+static inline float dot(const float* a, const float* c) {
+    float s = 0.0;
     for (int i = 0; i < N; ++i) s += a[i] * c[i];
     return s;
 }
 
-static inline double norm2(const double* a) {
+static inline float norm2(const float* a) {
     return std::sqrt(dot(a, a));
 }
 
-static inline void axpy(double* y, double alpha, const double* xvec) {
+static inline void axpy(float* y, float alpha, const float* xvec) {
     for (int i = 0; i < N; ++i) y[i] += alpha * xvec[i];
 }
 
-static inline void copy(double* dst, const double* src) {
+static inline void copy(float* dst, const float* src) {
     for (int i = 0; i < N; ++i) dst[i] = src[i];
 }
 
@@ -46,18 +46,18 @@ static inline int k_of(int i, int j) {
 }
 
 // Matrix-free apply: y = A x, where A corresponds to stiffness (Laplacian)
-static void apply_A(const double* xvec, double* yvec) {
+static void apply_A(const float* xvec, float* yvec) {
     for (int j = 1; j <= NY - 1; ++j) {
         for (int i = 1; i <= NX - 1; ++i) {
             const int k = k_of(i, j);
 
-            const double xc = xvec[k];
+            const float xc = xvec[k];
 
             // Neighbor values in interior vector; boundary outside interior => 0
-            const double xl = (i > 1)      ? xvec[k_of(i - 1, j)] : 0.0;
-            const double xr = (i < NX - 1) ? xvec[k_of(i + 1, j)] : 0.0;
-            const double xd = (j > 1)      ? xvec[k_of(i, j - 1)] : 0.0;
-            const double xu = (j < NY - 1) ? xvec[k_of(i, j + 1)] : 0.0;
+            const float xl = (i > 1)      ? xvec[k_of(i - 1, j)] : 0.0;
+            const float xr = (i < NX - 1) ? xvec[k_of(i + 1, j)] : 0.0;
+            const float xd = (j > 1)      ? xvec[k_of(i, j - 1)] : 0.0;
+            const float xu = (j < NY - 1) ? xvec[k_of(i, j + 1)] : 0.0;
 
             // SPD stiffness operator
             yvec[k] = ih2 * (4.0 * xc - xl - xr - xd - xu);
@@ -82,28 +82,28 @@ int main() {
     copy(r, b);
     copy(p, r);
 
-    const double bnorm = norm2(b);
+    const float bnorm = norm2(b);
     if (bnorm == 0.0) {
         std::cout << "bnorm=0, trivial.\n";
         return 0;
     }
 
-    double rsold = dot(r, r);
+    float rsold = dot(r, r);
 
     const int maxit = 2000;
-    const double tol_rel = 1e-8;
+    const float tol_rel = 1e-8;
 
     int it = 0;
     for (; it < maxit; ++it) {
         apply_A(p, Ap);
 
-        const double pAp = dot(p, Ap);
+        const float pAp = dot(p, Ap);
         if (pAp <= 0.0) {
             std::cout << "Breakdown: p^T A p <= 0 (pAp=" << pAp << ")\n";
             break;
         }
 
-        const double alpha = rsold / pAp;
+        const float alpha = rsold / pAp;
 
         // x = x + alpha p
         axpy(x, alpha, p);
@@ -111,16 +111,16 @@ int main() {
         // r = r - alpha Ap
         axpy(r, -alpha, Ap);
 
-        const double rsnew = dot(r, r);
+        const float rsnew = dot(r, r);
 
-        const double rel = std::sqrt(rsnew) / bnorm;
+        const float rel = std::sqrt(rsnew) / bnorm;
         if (rel < tol_rel) {
             rsold = rsnew;
             ++it;
             break;
         }
 
-        const double beta = rsnew / rsold;
+        const float beta = rsnew / rsold;
 
         // p = r + beta p
         for (int k = 0; k < N; ++k) p[k] = r[k] + beta * p[k];
