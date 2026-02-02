@@ -1,138 +1,143 @@
-#include <array>
-#include <vector>
-#include <cmath>
+#define EIGEN_RUNTIME_NO_MALLOC
+
+#include <Eigen/Core>
 #include <iostream>
-#include <algorithm>
-#include <Eigen/Sparse>
-#include <Eigen/IterativeLinearSolvers>
+#include <cmath>
+#include <cstddef>
+#include <chrono>
 
-#include "mesh.hpp"
+static constexpr int NX = 500; // cells in x
+static constexpr int NY = 500; // cells in y
 
-static inline double tri_area(const Node& a, const Node& b, const Node& c) {
-    return 0.5 * std::abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+// Interior unknowns
+static constexpr int NXI = NX - 1;
+static constexpr int NYI = NY - 1;
+static constexpr int N   = NXI * NYI;
+
+static constexpr double h   = 1.0 / double(NX);
+static constexpr double ih2 = 1.0 / (h * h);
+
+static double x[N];   // solution
+static double b[N];   // RHS
+static double r[N];   // CG residual
+static double p[N];   // CG search direction
+static double Ap[N];  // CG vector
+
+static inline double dot(const double* a, const double* c) {
+    double s = 0.0;
+    for (int i = 0; i < N; ++i) s += a[i] * c[i];
+    return s;
 }
 
-// ∫_T grad(phi_i)·grad(phi_j) dΩ = (b_i b_j + c_i c_j) / (4A)
-static std::array<std::array<double,3>,3>
-local_stiffness_p1(const Node& p0, const Node& p1, const Node& p2) {
-    double x0 = p0.x, y0 = p0.y;
-    double x1 = p1.x, y1 = p1.y;
-    double x2 = p2.x, y2 = p2.y;
-
-    double det = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
-    double A = 0.5 * std::abs(det);
-    double scale = 1.0 / (4.0 * A);
-
-    double b0 = y1 - y2, c0 = x2 - x1;
-    double b1 = y2 - y0, c1 = x0 - x2;
-    double b2 = y0 - y1, c2 = x1 - x0;
-
-    std::array<double,3> b{b0, b1, b2};
-    std::array<double,3> c{c0, c1, c2};
-
-    std::array<std::array<double,3>,3> K{};
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            K[i][j] = scale * (b[i]*b[j] + c[i]*c[j]);
-
-    return K;
+static inline double norm2(const double* a) {
+    return std::sqrt(dot(a, a));
 }
 
-// f=1 constant: ∫_T f φ_i dΩ = area/3
-static inline std::array<double,3> local_load_constant_f(double area, double fval = 1.0) {
-    return {fval * area / 3.0, fval * area / 3.0, fval * area / 3.0};
+static inline void axpy(double* y, double alpha, const double* xvec) {
+    for (int i = 0; i < N; ++i) y[i] += alpha * xvec[i];
+}
+
+static inline void copy(double* dst, const double* src) {
+    for (int i = 0; i < N; ++i) dst[i] = src[i];
+}
+
+static inline int k_of(int i, int j) {
+    return (j - 1) * NXI + (i - 1);
+}
+
+// Matrix-free apply: y = A x, where A corresponds to stiffness (Laplacian)
+static void apply_A(const double* xvec, double* yvec) {
+    for (int j = 1; j <= NY - 1; ++j) {
+        for (int i = 1; i <= NX - 1; ++i) {
+            const int k = k_of(i, j);
+
+            const double xc = xvec[k];
+
+            // Neighbor values in interior vector; boundary outside interior => 0
+            const double xl = (i > 1)      ? xvec[k_of(i - 1, j)] : 0.0;
+            const double xr = (i < NX - 1) ? xvec[k_of(i + 1, j)] : 0.0;
+            const double xd = (j > 1)      ? xvec[k_of(i, j - 1)] : 0.0;
+            const double xu = (j < NY - 1) ? xvec[k_of(i, j + 1)] : 0.0;
+
+            // SPD stiffness operator
+            yvec[k] = ih2 * (4.0 * xc - xl - xr - xd - xu);
+        }
+    }
 }
 
 int main() {
-    // Problem size
-    int nx = 500, ny = 500;
+    Eigen::internal::set_is_malloc_allowed(false);
 
-    Mesh mesh = make_unit_square_mesh(nx, ny);
-    const int n_nodes = (int)mesh.nodes.size();
+    // Matrix free CG solver
+    auto t0 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; ++i) {
+        x[i]  = 0.0;
+        b[i]  = 1.0;
+        r[i]  = 0.0;
+        p[i]  = 0.0;
+        Ap[i] = 0.0;
+    }
 
-    // Map global node -> unknown index (only interior nodes get an index)
-    std::vector<int> g2u(n_nodes, -1);
-    int n_unk = 0;
-    for (int i = 0; i < n_nodes; ++i) {
-        if (!mesh.is_dirichlet[i]) {
-            g2u[i] = n_unk++;
+    // r0 = b - A*x (x=0 => r=b)
+    copy(r, b);
+    copy(p, r);
+
+    const double bnorm = norm2(b);
+    if (bnorm == 0.0) {
+        std::cout << "bnorm=0, trivial.\n";
+        return 0;
+    }
+
+    double rsold = dot(r, r);
+
+    const int maxit = 2000;
+    const double tol_rel = 1e-8;
+
+    int it = 0;
+    for (; it < maxit; ++it) {
+        apply_A(p, Ap);
+
+        const double pAp = dot(p, Ap);
+        if (pAp <= 0.0) {
+            std::cout << "Breakdown: p^T A p <= 0 (pAp=" << pAp << ")\n";
+            break;
         }
-    }
 
-    using SpMat = Eigen::SparseMatrix<double>;
-    using Triplet = Eigen::Triplet<double>;
+        const double alpha = rsold / pAp;
 
-    std::vector<Triplet> trips;
-    trips.reserve(mesh.tris.size() * 9); // upper bound for interior contributions
+        // x = x + alpha p
+        axpy(x, alpha, p);
 
-    Eigen::VectorXd b = Eigen::VectorXd::Zero(n_unk);
+        // r = r - alpha Ap
+        axpy(r, -alpha, Ap);
 
-    // Assemble reduced system (interior unknowns only). Dirichlet is u=0, so no RHS correction.
-    for (const auto& t : mesh.tris) {
-        const Node& p0 = mesh.nodes[t.v[0]];
-        const Node& p1 = mesh.nodes[t.v[1]];
-        const Node& p2 = mesh.nodes[t.v[2]];
+        const double rsnew = dot(r, r);
 
-        double area = tri_area(p0, p1, p2);
-        auto K = local_stiffness_p1(p0, p1, p2);
-        auto f = local_load_constant_f(area, 1.0);
-
-        for (int a = 0; a < 3; ++a) {
-            int ga = t.v[a];
-            int ia = g2u[ga];
-
-            // Load vector: only if test function corresponds to an interior unknown
-            if (ia >= 0) {
-                b[ia] += f[a];
-            }
-
-            for (int c = 0; c < 3; ++c) {
-                int gc = t.v[c];
-                int ic = g2u[gc];
-
-                // Stiffness contributions:
-                // If both are interior -> matrix entry.
-                // If basis is Dirichlet and Dirichlet value is zero -> no RHS correction needed.
-                if (ia >= 0 && ic >= 0) {
-                    trips.emplace_back(ia, ic, K[a][c]);
-                }
-            }
+        const double rel = std::sqrt(rsnew) / bnorm;
+        if (rel < tol_rel) {
+            rsold = rsnew;
+            ++it;
+            break;
         }
+
+        const double beta = rsnew / rsold;
+
+        // p = r + beta p
+        for (int k = 0; k < N; ++k) p[k] = r[k] + beta * p[k];
+
+        rsold = rsnew;
     }
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> fs = t1 - t0;
+    std::cout << "CG iters: " << it << "\n"
+              << "rel_res: " << (std::sqrt(rsold) / bnorm) << "\n"
+              << "Time: " << fs.count() << " s" << "\n";
 
-    SpMat A(n_unk, n_unk);
-    A.setFromTriplets(trips.begin(), trips.end()); // duplicates summed
+    const int ic = NX / 2;
+    const int jc = NY / 2;
+    const int kc = k_of(ic, jc);
+    std::cout << "u(center) = " << x[kc] << "\n";
 
-    // Solve A x = b with PCG (SPD)
-    Eigen::ConjugateGradient<SpMat, Eigen::Lower|Eigen::Upper, Eigen::IncompleteCholesky<double>> cg;
-    cg.setMaxIterations(2000);
-    cg.setTolerance(1e-8);
-    cg.compute(A);
-
-    Eigen::VectorXd x_unk = cg.solve(b);
-
-    std::cout << "CG iters: " << cg.iterations()
-              << "  est_relerr: " << cg.error() << "\n";
-
-    // Expand solution to all nodes (Dirichlet nodes = 0)
-    std::vector<double> x_full(n_nodes, 0.0);
-    for (int g = 0; g < n_nodes; ++g) {
-        int u = g2u[g];
-        if (u >= 0) x_full[g] = x_unk[u];
-    }
-
-    // Print center value (closest grid node)
-    int cx = nx / 2, cy = ny / 2;
-    int center = cy * (nx + 1) + cx;
-    std::cout << "u(center) CG = " << x_full[center] << "\n";
-
-    // Reference with direct Cholesky
-    Eigen::SimplicialLDLT<SpMat> chol;
-    chol.compute(A);
-    auto x_chol = chol.solve(b);
-    std::cout << "u(center) Cholesky = " << x_chol[center] << "\n";
-
-    // std::cout << Eigen::MatrixXd(A) << std::endl;
-
+    Eigen::internal::set_is_malloc_allowed(true);
     return 0;
 }
