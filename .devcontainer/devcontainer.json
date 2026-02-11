@@ -1,7 +1,7 @@
 {
-  "name": "dolfinx-gas-sim",
+  "name": "Minimal C++ and python Dev",
   "dockerComposeFile": "../compose.yml",
-  "service": "dolfinx",
+  "service": "python-cpp-env",
   "workspaceFolder": "/work",
   "customizations": {
     "vscode": {

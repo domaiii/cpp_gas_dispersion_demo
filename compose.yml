@@ -1,7 +1,11 @@
 services:
-  dolfinx:
-    image: ghcr.io/fenics/dolfinx/dolfinx:nightly
-    working_dir: /work
+  python-cpp-env:
+    build: .
+    container_name: python_cpp_env 
     volumes:
-      - ./:/work
+      - .:/app
+    stdin_open: true
     tty: true
+    working_dir: /app
+
+

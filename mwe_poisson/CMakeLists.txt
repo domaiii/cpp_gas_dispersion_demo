@@ -11,17 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Eigen3 REQUIRED)
-
-add_executable(fem_eigen
+add_executable(fem_example
     fem_poisson_p1.cpp
 )
 
-target_link_libraries(fem_eigen
-    Eigen3::Eigen
-)
-
-target_compile_options(fem_eigen PRIVATE
+target_compile_options(fem_example PRIVATE
     -O3
     -march=native
 )

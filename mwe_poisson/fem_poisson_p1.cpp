@@ -1,6 +1,5 @@
 #define EIGEN_RUNTIME_NO_MALLOC
 
-#include <Eigen/Core>
 #include <iostream>
 #include <cmath>
 #include <cstddef>
@@ -66,8 +65,6 @@ static void apply_A(const float* xvec, float* yvec) {
 }
 
 int main() {
-    Eigen::internal::set_is_malloc_allowed(false);
-
     // Matrix free CG solver
     auto t0 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < N; ++i) {
@@ -138,6 +135,5 @@ int main() {
     const int kc = k_of(ic, jc);
     std::cout << "u(center) = " << x[kc] << "\n";
 
-    Eigen::internal::set_is_malloc_allowed(true);
     return 0;
 }
