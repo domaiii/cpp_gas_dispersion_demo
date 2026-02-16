@@ -7,7 +7,7 @@ def generate_spd_banded_problem(n: int, bandwidth: int, seed: int = None, debug:
     if seed is not None:
         np.random.seed(seed)
 
-    A = np.zeros((n, n), dtype=np.float64)
+    A = np.zeros((n, n), dtype=np.float32)
 
     # symmetric band
     for i in range(n):
@@ -77,24 +77,23 @@ def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: 
     filepath = os.path.join(base_dir, filename)
 
     with open(filepath, "wb") as f:
-        np.uint64(n).tofile(f)
-        np.uint64(nnz).tofile(f)
+        np.uint32(n).tofile(f)
+        np.uint32(nnz).tofile(f)
 
-        A_csr.indptr.astype(np.uint64).tofile(f)
-        A_csr.indices.astype(np.uint64).tofile(f)
-        A_csr.data.astype(np.float64).tofile(f)
+        A_csr.indptr.astype(np.uint32).tofile(f)
+        A_csr.indices.astype(np.uint32).tofile(f)
+        A_csr.data.astype(np.float32).tofile(f)
 
-        x.astype(np.float64).tofile(f)
-        b.astype(np.float64).tofile(f)
+        x.astype(np.float32).tofile(f)
+        b.astype(np.float32).tofile(f)
 
     print(f"Saved: {filepath}")
     print(f"  n = {n}")
     print(f"  nnz = {nnz}")
     print(f"  sparsity = {sparsity:.2f}%")
-    print(f"  density = {100 - sparsity:.2f}%")
 
 
 if __name__ == "__main__":
     problem_dir = Path(__file__).parent / "test_problems"
-    A, x, b = generate_spd_banded_problem(25, 2, 0, True)
+    A, x, b = generate_spd_banded_problem(25, 2, 42, True)
     save_problem_binary(problem_dir, A, x, b)
