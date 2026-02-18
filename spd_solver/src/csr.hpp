@@ -9,11 +9,11 @@
 #include "fixed_q1516.hpp"
 
 // ==========================
-// CSRMatrixStatic (solver matrix)
+// CSRMatrix (solver matrix)
 // ==========================
 
 template<typename T>
-struct CSRMatrixStatic
+struct CSRMatrix
 {
     uint32_t n;
     uint32_t nnz;
@@ -26,19 +26,9 @@ struct CSRMatrixStatic
 template<typename T>
 struct CSRLinearProblem
 {
-    CSRMatrixStatic<T> A{};
+    CSRMatrix<T> A{};
     T x[N_MAX]{};
     T b[N_MAX]{};
-};
-
-// ==========================
-// CG Workspace
-// ==========================
-
-struct CGWorkspace {
-    q15_16 r[N_MAX];
-    q15_16 p[N_MAX];
-    q15_16 Ap[N_MAX];
 };
 
 template<typename T>
@@ -84,7 +74,7 @@ inline void csr_problem_from_file(const std::string& filename,
 }
 
 template<typename TMatrix, typename TX, typename TY>
-void spmv(const CSRMatrixStatic<TMatrix>& A,
+void spmv(const CSRMatrix<TMatrix>& A,
           const TX* x,
           TY* y)
 {

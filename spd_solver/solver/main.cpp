@@ -1,13 +1,13 @@
 #include "csr.hpp"
 #include "fixed_q1516.hpp"
+#include "cg.hpp"
 
 #include <iostream>
 #include <cmath>
 
-static constexpr double EPS = 1e-2;
-
 static CSRLinearProblem<q15_16> prob{};
-static q15_16 y[N_MAX]{};
+static CGWorkspace<q15_16> cg_ws{};
+static q15_16 x_sol[N_MAX]{};
 
 int main()
 {
@@ -15,7 +15,7 @@ int main()
 
     // ---------- load problem ----------
 
-    csr_problem_from_file("../spd_problem_generator/test_problems/n50_sp13.52.bin", prob);
+    csr_problem_from_file("../spd_problem_generator/test_problems/n256_sp2.72.bin", prob);
 
     std::cout
         << "Loaded matrix: n="
@@ -23,44 +23,46 @@ int main()
         << " nnz=" << prob.A.nnz
         << "\n";
 
-    // ---------- SpMV ----------
+    auto res = cg_solve(prob, x_sol, cg_ws);
 
-    spmv(prob.A, prob.x, y);
+    std::cout <<
+        "=== CG Solve Test ===\n" <<
+        "residual_norm = " << res.residual_norm << "\n" <<
+        "iterations = " << res.iterations << "\n" <<
+        "status: " << res.status << "\n";
 
-    // ---------- compare ----------
+    double max_abs_err = 0.0;
+    double sum_sq_err = 0.0;
+    double sum_sq_ref = 0.0;
 
-    std::cout << "\nCompare A*x vs b:\n";
+    std::cout << "\nCompare solved x vs reference x:\n";
+    for (size_t i = 0; i < prob.A.n; ++i) {
+        const double xhat = x_sol[i].to_double();
+        const double xref = prob.x[i].to_double();
+        const double err = std::abs(xhat - xref);
 
-    bool ok = true;
+        if (err > max_abs_err) {
+            max_abs_err = err;
+        }
+        sum_sq_err += err * err;
+        sum_sq_ref += xref * xref;
 
-    for (size_t i = 0; i < prob.A.n; ++i)
-    {
-        float yd = y[i].to_float();
-        float bd = prob.b[i].to_float();
-
-        float err = std::abs(yd - bd);
-
-        if (i < 5) // print first few
-        {
+        if (i < 5) {
             std::cout
                 << "i=" << i
-                << "  Ax=" << yd
-                << "  b="  << bd
+                << "  x_sol=" << xhat
+                << "  x_ref=" << xref
                 << "  err=" << err
                 << "\n";
         }
-
-        if (err > EPS)
-            ok = false;
     }
-    std::cout << "...\n";
 
-    // ---------- result ----------
+    const double rms_err = std::sqrt(sum_sq_err / static_cast<double>(prob.A.n));
+    const double rel_l2_err =
+        (sum_sq_ref > 0.0) ? std::sqrt(sum_sq_err / sum_sq_ref) : 0.0;
 
-    if (ok)
-        std::cout << "\nSpMV fixed-point OK)\n";
-    else
-        std::cout << "\nERROR: SpMV result A * x does not match vector b.\n";
-
-    return ok ? 0 : 1;
+    std::cout
+        << "max_abs_err=" << max_abs_err << "\n"
+        << "rms_err=" << rms_err << "\n"
+        << "rel_l2_err=" << rel_l2_err << "\n";
 }
