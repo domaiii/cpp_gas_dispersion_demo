@@ -87,12 +87,12 @@ void spmv(const CSRMatrix<TMatrix>& A,
 
     for (size_t i = 0; i < A.n; ++i)
     {
-        if constexpr (std::is_same_v<T, q15_16>) {
+        if constexpr (std::is_same_v<T, fixed_point>) {
             int64_t acc = 0;
             for (size_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k) {
-                acc += q15_16::mul_wide_raw(A.values[k], x[A.col_idx[k]]);
+                acc += fixed_point::mul_wide_raw(A.values[k], x[A.col_idx[k]]);
             }
-            y[i].v = static_cast<int32_t>(acc >> 16);
+            y[i].v = static_cast<int32_t>(acc >> fixed_point::FRACTION_BITS);
         } else {
             T acc{};
             for (size_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k) {

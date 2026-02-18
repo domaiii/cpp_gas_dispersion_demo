@@ -59,12 +59,12 @@ struct CGResult
 template<typename T>
 inline double cg_dot_scalar(const T* a, const T* b, uint32_t n)
 {
-    if constexpr (std::is_same_v<T, q15_16>) {
+    if constexpr (std::is_same_v<T, fixed_point>) {
         int64_t acc = 0;
         for (uint32_t i = 0; i < n; ++i) {
-            acc += q15_16::mul_wide_raw(a[i], b[i]);
+            acc += fixed_point::mul_wide_raw(a[i], b[i]);
         }
-        const double scale = static_cast<double>(q15_16::SCALE);
+        const double scale = static_cast<double>(fixed_point::SCALE);
         return static_cast<double>(acc) / (scale * scale);
     } else {
         double acc = 0.0;
@@ -78,7 +78,7 @@ inline double cg_dot_scalar(const T* a, const T* b, uint32_t n)
 template<typename T>
 inline double cg_value_to_double(T v)
 {
-    if constexpr (std::is_same_v<T, q15_16>) {
+    if constexpr (std::is_same_v<T, fixed_point>) {
         return v.to_double();
     } else {
         return static_cast<double>(v);

@@ -5,9 +5,9 @@
 #include <iostream>
 #include <cmath>
 
-static CSRLinearProblem<q15_16> prob{};
-static CGWorkspace<q15_16> cg_ws{};
-static q15_16 x_sol[N_MAX]{};
+static CSRLinearProblem<fixed_point> prob{};
+static CGWorkspace<fixed_point> cg_ws{};
+static fixed_point x_sol[N_MAX]{};
 
 int main()
 {
