@@ -48,4 +48,3 @@
 /build/
 build/
 .vscode/*
-!.vscode/extensions.json
