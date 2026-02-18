@@ -1,5 +1,5 @@
 #include "csr.hpp"
-#include "fixed_q1516.hpp"
+#include "fixed_point.hpp"
 #include "cg.hpp"
 
 #include <iostream>

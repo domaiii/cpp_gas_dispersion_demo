@@ -1,5 +1,5 @@
 // #define DEBUG_FIXED 
-#include "fixed_q1516.hpp"
+#include "fixed_point.hpp"
 #include "csr.hpp"
 #include <iomanip>
 #include <iostream>

@@ -6,7 +6,7 @@
 #include <string>
 #include <type_traits>
 #include "config.hpp"
-#include "fixed_q1516.hpp"
+#include "fixed_point.hpp"
 
 // ==========================
 // CSRMatrix (solver matrix)
