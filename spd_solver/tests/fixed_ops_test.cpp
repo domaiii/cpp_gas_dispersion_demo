@@ -160,7 +160,7 @@ int main() {
             }
         }
         assert(testcase_path != nullptr);
-        load_problem_from_file(testcase_path, prob);
+        csr_problem_from_file(testcase_path, prob);
 
         std::cout
             << "Loaded matrix: n="

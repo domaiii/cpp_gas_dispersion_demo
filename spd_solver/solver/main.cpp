@@ -15,7 +15,7 @@ int main()
 
     // ---------- load problem ----------
 
-    load_problem_from_file("../spd_problem_generator/test_problems/n50_sp13.52.bin", prob);
+    csr_problem_from_file("../spd_problem_generator/test_problems/n50_sp13.52.bin", prob);
 
     std::cout
         << "Loaded matrix: n="

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include "config.hpp"
 #include "fixed_q1516.hpp"
 
@@ -41,7 +42,7 @@ struct CGWorkspace {
 };
 
 template<typename T>
-inline void load_problem_from_file(const std::string& filename,
+inline void csr_problem_from_file(const std::string& filename,
                                    CSRLinearProblem<T>& prob)
 {
     std::ifstream file(filename, std::ios::binary);
@@ -82,39 +83,32 @@ inline void load_problem_from_file(const std::string& filename,
         throw std::runtime_error("File corrupted");
 }
 
-template<typename T>
-void spmv(const CSRMatrixStatic<T>& A,
-          const T* x,
-          T* y)
+template<typename TMatrix, typename TX, typename TY>
+void spmv(const CSRMatrixStatic<TMatrix>& A,
+          const TX* x,
+          TY* y)
 {
+    static_assert(std::is_same_v<TMatrix, TX>,
+                  "spmv: matrix and x vector element types must match");
+    static_assert(std::is_same_v<TMatrix, TY>,
+                  "spmv: matrix and y vector element types must match");
+
+    using T = TMatrix;
+
     for (size_t i = 0; i < A.n; ++i)
     {
-        T acc{};
-
-        for (size_t k = A.row_ptr[i];
-             k < A.row_ptr[i + 1];
-             ++k)
-        {
-            acc = acc + A.values[k]
-                        * x[A.col_idx[k]];
+        if constexpr (std::is_same_v<T, q15_16>) {
+            int64_t acc = 0;
+            for (size_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k) {
+                acc += q15_16::mul_wide_raw(A.values[k], x[A.col_idx[k]]);
+            }
+            y[i].v = static_cast<int32_t>(acc >> 16);
+        } else {
+            T acc{};
+            for (size_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k) {
+                acc = acc + A.values[k] * x[A.col_idx[k]];
+            }
+            y[i] = acc;
         }
-
-        y[i] = acc;
-    }
-}
-
-inline void spmv(const CSRMatrixStatic<q15_16>& A,
-                 const q15_16* x,
-                 q15_16* y)
-{
-    for (size_t i = 0; i < A.n; ++i)
-    {
-        int64_t acc = 0; 
-
-        for (size_t k = A.row_ptr[i]; k < A.row_ptr[i + 1]; ++k)
-        {
-            acc += q15_16::mul_wide_raw(A.values[k], x[A.col_idx[k]]);
-        }
-        y[i].v = static_cast<int32_t>(acc >> 16);
     }
 }
