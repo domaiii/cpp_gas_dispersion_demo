@@ -1,3 +1,5 @@
 add_executable(fixed_ops_test fixed_ops_test.cpp)
 target_link_libraries(fixed_ops_test spd_solver)
 target_compile_definitions(fixed_ops_test PRIVATE DEBUG_FIXED)
+
+configure_file(testcase.bin testcase.bin COPYONLY)

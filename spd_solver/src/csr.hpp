@@ -1,27 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
+#include <stdexcept>
 #include <string>
 #include "config.hpp"
 #include "fixed_q1516.hpp"
-
-// ==========================
-// CSRProblem (I/O container)
-// ==========================
-
-struct CSRProblem {
-    uint32_t n = 0;
-    uint32_t nnz = 0;
-
-    uint32_t row_ptr[N_MAX + 1];
-    uint32_t col_idx[NNZ_MAX];
-    float values[NNZ_MAX];
-
-    float x[N_MAX];
-    float b[N_MAX];
-};
-
-void load_problem(const std::string& filename, CSRProblem& prob);
 
 // ==========================
 // CSRMatrixStatic (solver matrix)
@@ -38,6 +22,14 @@ struct CSRMatrixStatic
     T        values[NNZ_MAX];
 };
 
+template<typename T>
+struct CSRLinearProblem
+{
+    CSRMatrixStatic<T> A{};
+    T x[N_MAX]{};
+    T b[N_MAX]{};
+};
+
 // ==========================
 // CG Workspace
 // ==========================
@@ -47,6 +39,48 @@ struct CGWorkspace {
     q15_16 p[N_MAX];
     q15_16 Ap[N_MAX];
 };
+
+template<typename T>
+inline void load_problem_from_file(const std::string& filename,
+                                   CSRLinearProblem<T>& prob)
+{
+    std::ifstream file(filename, std::ios::binary);
+    if (!file)
+        throw std::runtime_error("Cannot open file");
+
+    file.read(reinterpret_cast<char*>(&prob.A.n), sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(&prob.A.nnz), sizeof(uint32_t));
+
+    if (prob.A.n > N_MAX || prob.A.nnz > NNZ_MAX)
+        throw std::runtime_error("Problem exceeds static capacity");
+
+    file.read(reinterpret_cast<char*>(prob.A.row_ptr),
+              (prob.A.n + 1) * sizeof(uint32_t));
+
+    file.read(reinterpret_cast<char*>(prob.A.col_idx),
+              prob.A.nnz * sizeof(uint32_t));
+
+    for (size_t i = 0; i < prob.A.nnz; ++i) {
+        float v = 0.0f;
+        file.read(reinterpret_cast<char*>(&v), sizeof(float));
+        prob.A.values[i] = static_cast<T>(v);
+    }
+
+    for (size_t i = 0; i < prob.A.n; ++i) {
+        float v = 0.0f;
+        file.read(reinterpret_cast<char*>(&v), sizeof(float));
+        prob.x[i] = static_cast<T>(v);
+    }
+
+    for (size_t i = 0; i < prob.A.n; ++i) {
+        float v = 0.0f;
+        file.read(reinterpret_cast<char*>(&v), sizeof(float));
+        prob.b[i] = static_cast<T>(v);
+    }
+
+    if (!file)
+        throw std::runtime_error("File corrupted");
+}
 
 template<typename T>
 void spmv(const CSRMatrixStatic<T>& A,

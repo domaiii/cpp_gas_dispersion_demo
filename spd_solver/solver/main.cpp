@@ -6,11 +6,8 @@
 
 static constexpr double EPS = 1e-2;
 
-static CSRProblem prob;
-static CSRMatrixStatic<q15_16> A{};
-static q15_16 x[N_MAX]{};
+static CSRLinearProblem<q15_16> prob{};
 static q15_16 y[N_MAX]{};
-static q15_16 b_ref[N_MAX]{};
 
 int main()
 {
@@ -18,39 +15,17 @@ int main()
 
     // ---------- load problem ----------
 
-    load_problem("../spd_problem_generator/test_problems/n75_sp9.12.bin", prob);
+    load_problem_from_file("../spd_problem_generator/test_problems/n50_sp13.52.bin", prob);
 
     std::cout
         << "Loaded matrix: n="
-        << prob.n
-        << " nnz=" << prob.nnz
+        << prob.A.n
+        << " nnz=" << prob.A.nnz
         << "\n";
-
-    // ---------- convert to fixed CSR ----------
-
-    A.n   = prob.n;
-    A.nnz = prob.nnz;
-
-    for (size_t i = 0; i <= prob.n; ++i)
-        A.row_ptr[i] = prob.row_ptr[i];
-
-    for (size_t i = 0; i < prob.nnz; ++i)
-    {
-        A.col_idx[i] = prob.col_idx[i];
-        A.values[i]  = q15_16(prob.values[i]);
-    }
-
-    // ---------- convert x & reference b ----------
-
-    for (size_t i = 0; i < prob.n; ++i)
-    {
-        x[i]     = q15_16(prob.x[i]);
-        b_ref[i] = q15_16(prob.b[i]);
-    }
 
     // ---------- SpMV ----------
 
-    spmv(A, x, y);
+    spmv(prob.A, prob.x, y);
 
     // ---------- compare ----------
 
@@ -58,10 +33,10 @@ int main()
 
     bool ok = true;
 
-    for (size_t i = 0; i < prob.n; ++i)
+    for (size_t i = 0; i < prob.A.n; ++i)
     {
         float yd = y[i].to_float();
-        float bd = b_ref[i].to_float();
+        float bd = prob.b[i].to_float();
 
         float err = std::abs(yd - bd);
 

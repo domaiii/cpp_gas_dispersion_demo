@@ -1,12 +1,16 @@
 // #define DEBUG_FIXED 
 #include "fixed_q1516.hpp"
+#include "csr.hpp"
 #include <iomanip>
 #include <iostream>
 #include <cmath>
 #include <cassert>
 #include <climits>
+#include <filesystem>
 
 static constexpr double EPS = 1e-3;
+static CSRLinearProblem<q15_16> prob{};
+static q15_16 y[N_MAX]{};
 
 void check_close(double ref, double got, const char* msg) {
     std::cout << std::left << std::setw(28) << msg << "OK  "
@@ -72,8 +76,8 @@ int main() {
         vec_axpy(y, x, alpha, 3);
 
         check_close(3.0, y[0].to_double(), "AXPY function test");
-        check_close(5.0, y[1].to_double(), "");
-        check_close(7.0, y[2].to_double(), "");
+        check_close(5.0, y[1].to_double(), "---");
+        check_close(7.0, y[2].to_double(), "---");
     }
 
     std::cout << "\n=== Overflow tests ===\n";
@@ -138,6 +142,44 @@ int main() {
         q15_16 d = dot_q15_16(x, x, 8);
         assert(d.v == (int32_t)manual_acc);
         check_ok("Dot product overflow");
+    }
+
+    // ---------- matrix vector product ----------
+    {
+        std::cout << "\n=== Fixed-point SpMV demo ===\n";
+        const char* testcase_path = nullptr;
+        const char* candidates[] = {
+            "testcase.bin",
+            "tests/testcase.bin",
+            "../tests/testcase.bin",
+        };
+        for (const char* p : candidates) {
+            if (std::filesystem::exists(p)) {
+                testcase_path = p;
+                break;
+            }
+        }
+        assert(testcase_path != nullptr);
+        load_problem_from_file(testcase_path, prob);
+
+        std::cout
+            << "Loaded matrix: n="
+            << prob.A.n
+            << " nnz=" << prob.A.nnz
+            << "\n";
+
+        spmv(prob.A, prob.x, y);
+
+        for (size_t i = 0; i < prob.A.n; ++i)
+        {
+            float yd = y[i].to_float();
+            float bd = prob.b[i].to_float();
+
+            float err = std::abs(yd - bd);
+            assert(err < EPS);
+        }
+        check_ok("spmv() test A*x = b");
+    
     }
 
     std::cout << "\nALL TESTS PASSED\n";
