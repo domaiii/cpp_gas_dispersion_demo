@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 #include <ostream>
 #include <type_traits>
 
@@ -56,21 +57,26 @@ struct CGResult
 };
 
 template<typename T>
-inline T cg_dot(const T* a, const T* b, uint32_t n)
+inline double cg_dot_scalar(const T* a, const T* b, uint32_t n)
 {
     if constexpr (std::is_same_v<T, q15_16>) {
-        return dot_q15_16(a, b, n);
-    } else {
-        T acc{};
+        int64_t acc = 0;
         for (uint32_t i = 0; i < n; ++i) {
-            acc = acc + a[i] * b[i];
+            acc += q15_16::mul_wide_raw(a[i], b[i]);
+        }
+        const double scale = static_cast<double>(q15_16::SCALE);
+        return static_cast<double>(acc) / (scale * scale);
+    } else {
+        double acc = 0.0;
+        for (uint32_t i = 0; i < n; ++i) {
+            acc += static_cast<double>(a[i]) * static_cast<double>(b[i]);
         }
         return acc;
     }
 }
 
 template<typename T>
-inline double cg_to_double(T v)
+inline double cg_value_to_double(T v)
 {
     if constexpr (std::is_same_v<T, q15_16>) {
         return v.to_double();
@@ -100,8 +106,8 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
         ws.p[i] = ws.r[i];
     }
 
-    T rho = cg_dot(ws.r, ws.r, n);
-    double rr = cg_to_double(rho);
+    double rho = cg_dot_scalar(ws.r, ws.r, n);
+    double rr = rho;
     if (rr < 0.0) {
         rr = 0.0;
     }
@@ -115,35 +121,62 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
     for (uint32_t k = 0; k < params.max_iters; ++k) {
         spmv(prob.A, ws.p, ws.Ap);
 
-        const T denom = cg_dot(ws.p, ws.Ap, n);
-        if (std::abs(cg_to_double(denom)) <= 1e-30) {
+        const double denom = cg_dot_scalar(ws.p, ws.Ap, n);
+        if (std::abs(denom) <= 1e-30) {
+#ifdef DEBUG_CG
+            std::cout << "[DEBUG_CG] breakdown at iter " << k
+                      << " because denom=" << denom << "\n";
+#endif
             result.status = CGStatus::breakdown;
             result.iterations = k;
             return result;
         }
 
-        const T alpha = rho / denom;
+        const double alpha = rho / denom;
         for (uint32_t i = 0; i < n; ++i) {
-            x[i] = x[i] + alpha * ws.p[i];
-            ws.r[i] = ws.r[i] - alpha * ws.Ap[i];
+            const double x_next =
+                cg_value_to_double(x[i]) + alpha * cg_value_to_double(ws.p[i]);
+            const double r_next =
+                cg_value_to_double(ws.r[i]) - alpha * cg_value_to_double(ws.Ap[i]);
+            x[i] = static_cast<T>(x_next);
+            ws.r[i] = static_cast<T>(r_next);
         }
 
-        const T rho_new = cg_dot(ws.r, ws.r, n);
-        rr = cg_to_double(rho_new);
+        const double rho_new = cg_dot_scalar(ws.r, ws.r, n);
+        rr = rho_new;
         if (rr < 0.0) {
             rr = 0.0;
         }
         result.residual_norm = std::sqrt(rr);
         result.iterations = k + 1;
+#ifdef DEBUG_CG
+        if (k < 10 || ((k + 1) % 20 == 0)) {
+            double max_abs_x = 0.0;
+            for (uint32_t i = 0; i < n; ++i) {
+                const double ax = std::abs(cg_value_to_double(x[i]));
+                if (ax > max_abs_x) max_abs_x = ax;
+            }
+            std::cout
+                << "[DEBUG_CG] k=" << (k + 1)
+                << " rho=" << rho
+                << " denom=" << denom
+                << " alpha=" << alpha
+                << " beta=" << ((std::abs(rho) > 0.0) ? (rho_new / rho) : 0.0)
+                << " residual_norm=" << result.residual_norm
+                << " max|x|=" << max_abs_x << "\n";
+        }
+#endif
 
         if (result.residual_norm <= params.tol) {
             result.status = CGStatus::converged;
             return result;
         }
 
-        const T beta = rho_new / rho;
+        const double beta = rho_new / rho;
         for (uint32_t i = 0; i < n; ++i) {
-            ws.p[i] = ws.r[i] + beta * ws.p[i];
+            const double p_next =
+                cg_value_to_double(ws.r[i]) + beta * cg_value_to_double(ws.p[i]);
+            ws.p[i] = static_cast<T>(p_next);
         }
         rho = rho_new;
     }

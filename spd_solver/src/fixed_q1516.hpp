@@ -18,6 +18,30 @@ struct q15_16 {
     explicit q15_16(float f) 
         : v(static_cast<int32_t>(f * static_cast<float>(SCALE))) {}
 
+    explicit q15_16(double d)
+{
+    if (!std::isfinite(d)) {
+        v = 0;
+        return;
+    }
+
+    // representable range in real values
+    constexpr double maxv = static_cast<double>(INT32_MAX) / static_cast<double>(SCALE);
+    constexpr double minv = static_cast<double>(INT32_MIN) / static_cast<double>(SCALE);
+
+    if (d > maxv) d = maxv;
+    if (d < minv) d = minv;
+
+    // round to nearest integer raw
+    const double scaled = d * static_cast<double>(SCALE);
+    int64_t raw = static_cast<int64_t>(std::llround(scaled));
+
+    if (raw > INT32_MAX) raw = INT32_MAX;
+    if (raw < INT32_MIN) raw = INT32_MIN;
+
+    v = static_cast<int32_t>(raw);
+}
+
     static q15_16 from_raw(int32_t raw) { q15_16 x; x.v = raw; return x; }
 
     double to_double() const { return static_cast<double>(v) / static_cast<double>(SCALE); }
@@ -25,22 +49,39 @@ struct q15_16 {
 
     // Overload operators + - * /
     q15_16 operator+(const q15_16& o) const {
-        return from_raw(v + o.v);
+        int64_t tmp = static_cast<int64_t>(v) + static_cast<int64_t>(o.v);
+        if (tmp > INT32_MAX) tmp = INT32_MAX;
+        if (tmp < INT32_MIN) tmp = INT32_MIN;
+        return from_raw(static_cast<int32_t>(tmp));
     }
 
     q15_16 operator-(const q15_16& o) const {
-        return from_raw(v - o.v);
+        int64_t tmp = static_cast<int64_t>(v) - static_cast<int64_t>(o.v);
+        if (tmp > INT32_MAX) tmp = INT32_MAX;
+        if (tmp < INT32_MIN) tmp = INT32_MIN;
+        return from_raw(static_cast<int32_t>(tmp));
     }
 
     q15_16 operator*(const q15_16& o) const {
-        int64_t tmp = static_cast<int64_t>(v) * o.v;
-        return from_raw(static_cast<int32_t>(tmp >> FRACTION_BITS));
+        int64_t prod = static_cast<int64_t>(v) * static_cast<int64_t>(o.v); // q32.32
+        int64_t shifted = prod >> FRACTION_BITS; // back to q15.16 (raw)
+        if (shifted > INT32_MAX) shifted = INT32_MAX;
+        if (shifted < INT32_MIN) shifted = INT32_MIN;
+        return from_raw(static_cast<int32_t>(shifted));
     }
 
     q15_16 operator/(const q15_16& o) const {
-        if (o.v == 0) return from_raw(v >= 0 ? 0x7FFFFFFF : 0x80000000);
-        int64_t num = static_cast<int64_t>(v) << FRACTION_BITS;
-        return from_raw(static_cast<int32_t>(num / o.v));
+        if (o.v == 0) {
+            return from_raw(v >= 0 ? INT32_MAX : INT32_MIN);
+        }
+
+        int64_t num = static_cast<int64_t>(v) << FRACTION_BITS; // q31.32
+        int64_t raw = num / static_cast<int64_t>(o.v);          // back to raw q15.16
+
+        if (raw > INT32_MAX) raw = INT32_MAX;
+        if (raw < INT32_MIN) raw = INT32_MIN;
+
+        return from_raw(static_cast<int32_t>(raw));
     }
 
     static int64_t mul_wide_raw(const q15_16& a, const q15_16& b) {
