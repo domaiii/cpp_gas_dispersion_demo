@@ -95,5 +95,5 @@ def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: 
 
 if __name__ == "__main__":
     problem_dir = Path(__file__).parent / "test_problems"
-    A, x, b = generate_spd_banded_problem(25, 2, 42, True)
+    A, x, b = generate_spd_banded_problem(2000, 4, 24, True)
     save_problem_binary(problem_dir, A, x, b)
