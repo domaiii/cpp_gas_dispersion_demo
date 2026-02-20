@@ -16,23 +16,22 @@ struct fixed_point {
     static constexpr int32_t SCALE = 1 << FRACTION_BITS;
 
     fixed_point() : v(0) {}
-    explicit fixed_point(float f) : fixed_point(static_cast<double>(f)) {}
-    explicit fixed_point(double d)
+    explicit fixed_point(float f)
     {
-        if (!std::isfinite(d)) {
+        if (!std::isfinite(f)) {
             v = 0;
             return;
         }
 
-        constexpr double maxv = static_cast<double>(INT32_MAX) /
-                                static_cast<double>(SCALE);
-        constexpr double minv = static_cast<double>(INT32_MIN) /
-                                static_cast<double>(SCALE);
+        constexpr float maxv = static_cast<float>(INT32_MAX) /
+                                static_cast<float>(SCALE);
+        constexpr float minv = static_cast<float>(INT32_MIN) /
+                                static_cast<float>(SCALE);
 
-        if (d > maxv) d = maxv;
-        if (d < minv) d = minv;
+        if (f > maxv) f = maxv;
+        if (f < minv) f = minv;
 
-        const double scaled = d * static_cast<double>(SCALE);
+        const float scaled = f * static_cast<float>(SCALE);
         int64_t raw = static_cast<int64_t>(std::llround(scaled));
 
         if (raw > INT32_MAX) raw = INT32_MAX;
@@ -40,6 +39,7 @@ struct fixed_point {
 
         v = static_cast<int32_t>(raw);
     }
+    explicit fixed_point(double d) : fixed_point(static_cast<float>(d)) {}
 
     static fixed_point from_raw(int32_t raw) { fixed_point x; x.v = raw; return x; }
 

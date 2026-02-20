@@ -19,7 +19,7 @@ struct CGWorkspace
 struct CGParams
 {
     uint32_t max_iters = static_cast<uint32_t>(N_MAX);
-    double tol = 1e-3;
+    float tol = 1e-3f;
     bool zero_initial_guess = true;
 };
 
@@ -53,35 +53,35 @@ struct CGResult
 {
     CGStatus status = CGStatus::max_iters_reached;
     uint32_t iterations = 0;
-    double residual_norm = 0.0;
+    float residual_norm = 0.0f;
 };
 
 template<typename T>
-inline double cg_dot_scalar(const T* a, const T* b, uint32_t n)
+inline float cg_dot_scalar(const T* a, const T* b, uint32_t n)
 {
     if constexpr (std::is_same_v<T, fixed_point>) {
         int64_t acc = 0;
         for (uint32_t i = 0; i < n; ++i) {
             acc += fixed_point::mul_wide_raw(a[i], b[i]);
         }
-        const double scale = static_cast<double>(fixed_point::SCALE);
-        return static_cast<double>(acc) / (scale * scale);
+        const float scale = static_cast<float>(fixed_point::SCALE);
+        return static_cast<float>(acc) / (scale * scale);
     } else {
-        double acc = 0.0;
+        float acc = 0.0f;
         for (uint32_t i = 0; i < n; ++i) {
-            acc += static_cast<double>(a[i]) * static_cast<double>(b[i]);
+            acc += static_cast<float>(a[i]) * static_cast<float>(b[i]);
         }
         return acc;
     }
 }
 
 template<typename T>
-inline double cg_value_to_double(T v)
+inline float cg_value_to_float(T v)
 {
     if constexpr (std::is_same_v<T, fixed_point>) {
-        return v.to_double();
+        return v.to_float();
     } else {
-        return static_cast<double>(v);
+        return static_cast<float>(v);
     }
 }
 
@@ -106,10 +106,10 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
         ws.p[i] = ws.r[i];
     }
 
-    double rho = cg_dot_scalar(ws.r, ws.r, n);
-    double rr = rho;
-    if (rr < 0.0) {
-        rr = 0.0;
+    float rho = cg_dot_scalar(ws.r, ws.r, n);
+    float rr = rho;
+    if (rr < 0.0f) {
+        rr = 0.0f;
     }
     result.residual_norm = std::sqrt(rr);
     if (result.residual_norm <= params.tol) {
@@ -121,8 +121,8 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
     for (uint32_t k = 0; k < params.max_iters; ++k) {
         spmv(prob.A, ws.p, ws.Ap);
 
-        const double denom = cg_dot_scalar(ws.p, ws.Ap, n);
-        if (std::abs(denom) <= 1e-30) {
+        const float denom = cg_dot_scalar(ws.p, ws.Ap, n);
+        if (std::abs(denom) <= 1e-20f) {
 #ifdef DEBUG_CG
             std::cout << "[DEBUG_CG] breakdown at iter " << k
                       << " because denom=" << denom << "\n";
@@ -132,28 +132,28 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
             return result;
         }
 
-        const double alpha = rho / denom;
+        const float alpha = rho / denom;
         for (uint32_t i = 0; i < n; ++i) {
-            const double x_next =
-                cg_value_to_double(x[i]) + alpha * cg_value_to_double(ws.p[i]);
-            const double r_next =
-                cg_value_to_double(ws.r[i]) - alpha * cg_value_to_double(ws.Ap[i]);
+            const float x_next =
+                cg_value_to_float(x[i]) + alpha * cg_value_to_float(ws.p[i]);
+            const float r_next =
+                cg_value_to_float(ws.r[i]) - alpha * cg_value_to_float(ws.Ap[i]);
             x[i] = static_cast<T>(x_next);
             ws.r[i] = static_cast<T>(r_next);
         }
 
-        const double rho_new = cg_dot_scalar(ws.r, ws.r, n);
+        const float rho_new = cg_dot_scalar(ws.r, ws.r, n);
         rr = rho_new;
-        if (rr < 0.0) {
-            rr = 0.0;
+        if (rr < 0.0f) {
+            rr = 0.0f;
         }
         result.residual_norm = std::sqrt(rr);
         result.iterations = k + 1;
 #ifdef DEBUG_CG
         if (k < 10 || ((k + 1) % 20 == 0)) {
-            double max_abs_x = 0.0;
+            float max_abs_x = 0.0f;
             for (uint32_t i = 0; i < n; ++i) {
-                const double ax = std::abs(cg_value_to_double(x[i]));
+                const float ax = std::abs(cg_value_to_float(x[i]));
                 if (ax > max_abs_x) max_abs_x = ax;
             }
             std::cout
@@ -161,7 +161,7 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
                 << " rho=" << rho
                 << " denom=" << denom
                 << " alpha=" << alpha
-                << " beta=" << ((std::abs(rho) > 0.0) ? (rho_new / rho) : 0.0)
+                << " beta=" << ((std::abs(rho) > 0.0f) ? (rho_new / rho) : 0.0f)
                 << " residual_norm=" << result.residual_norm
                 << " max|x|=" << max_abs_x << "\n";
         }
@@ -172,10 +172,10 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
             return result;
         }
 
-        const double beta = rho_new / rho;
+        const float beta = rho_new / rho;
         for (uint32_t i = 0; i < n; ++i) {
-            const double p_next =
-                cg_value_to_double(ws.r[i]) + beta * cg_value_to_double(ws.p[i]);
+            const float p_next =
+                cg_value_to_float(ws.r[i]) + beta * cg_value_to_float(ws.p[i]);
             ws.p[i] = static_cast<T>(p_next);
         }
         rho = rho_new;

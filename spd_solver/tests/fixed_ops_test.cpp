@@ -8,11 +8,11 @@
 #include <climits>
 #include <filesystem>
 
-static constexpr double EPS = 2e-3;
+static constexpr float EPS = 2e-3;
 static CSRLinearProblem<fixed_point> prob{};
 static fixed_point y[N_MAX]{};
 
-void check_close(double ref, double got, const char* msg) {
+void check_close(float ref, float got, const char* msg) {
     std::cout << std::left << std::setw(28) << msg << "OK  "
               << "ref=" << std::setw(8) << ref 
               << " got=" << std::setw(8) << got 
@@ -30,41 +30,41 @@ int main() {
 
     // ---------- conversion ----------
     {
-        double x = 1.25;
+        float x = 1.25;
         fixed_point q(x);
-        check_close(x, q.to_double(), "Conversion test");
+        check_close(x, q.to_float(), "Conversion test");
     }
 
     // ---------- add/sub ----------
     {
         fixed_point a(1.5), b(0.25);
-        check_close(1.75, (a+b).to_double(), "Addition test");
-        check_close(1.25, (a-b).to_double(), "Subtraction test");
+        check_close(1.75, (a+b).to_float(), "Addition test");
+        check_close(1.25, (a-b).to_float(), "Subtraction test");
     }
 
     // ---------- multiply ----------
     {
         fixed_point a(1.5), b(0.5);
-        check_close(0.75, (a*b).to_double(), "Multiplication test");
+        check_close(0.75, (a*b).to_float(), "Multiplication test");
     }
 
     // ---------- division ----------
     {
         fixed_point a(1.5), b(0.5);
-        check_close(3.0, (a/b).to_double(), "Division test");
+        check_close(3.0, (a/b).to_float(), "Division test");
     }
 
     // ---------- negative division ----------
     {
         fixed_point a(-2.0), b(0.5);
-        check_close(-4.0, (a/b).to_double(), "Negative div test");
+        check_close(-4.0, (a/b).to_float(), "Negative div test");
     }
 
     // ---------- dot product ----------
     {
         fixed_point x[3] = { fixed_point(1.0), fixed_point(2.0), fixed_point(3.0) };
         fixed_point d = dot_fixed(x, x, 3);
-        check_close(14.0, d.to_double(), "Dot product test");
+        check_close(14.0, d.to_float(), "Dot product test");
     }
 
     // ---------- axpy ----------
@@ -75,9 +75,9 @@ int main() {
 
         vec_axpy(y, x, alpha, 3);
 
-        check_close(3.0, y[0].to_double(), "AXPY function test");
-        check_close(5.0, y[1].to_double(), "---");
-        check_close(7.0, y[2].to_double(), "---");
+        check_close(3.0, y[0].to_float(), "AXPY function test");
+        check_close(5.0, y[1].to_float(), "---");
+        check_close(7.0, y[2].to_float(), "---");
     }
 
     std::cout << "\n=== Overflow tests ===\n";
@@ -98,8 +98,8 @@ int main() {
         fixed_point b(big_val);
         fixed_point r_fixed = a * b; 
 
-        double r_true = (double)big_val * big_val;
-        assert(std::abs(r_true - r_fixed.to_double()) > 1.0);
+        float r_true = (float)big_val * big_val;
+        assert(std::abs(r_true - r_fixed.to_float()) > 1.0);
 
         assert(r_fixed.v == INT32_MAX);
         
@@ -108,14 +108,14 @@ int main() {
 
     // ---------- division overflow (Saturation) ----------
     {
-        double val_a = 1000.0;
-        double val_b = 0.0001;
+        float val_a = 1000.0;
+        float val_b = 0.0001;
         fixed_point a(val_a);
         fixed_point b(val_b);
         auto r = a / b;
 
-        double math_result = val_a / val_b;
-        assert(std::abs(math_result - r.to_double()) > 1.0); 
+        float math_result = val_a / val_b;
+        assert(std::abs(math_result - r.to_float()) > 1.0); 
         
         check_ok("Division overflow");
     }
