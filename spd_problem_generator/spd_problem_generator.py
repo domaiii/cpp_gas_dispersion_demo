@@ -121,9 +121,9 @@ def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: 
 
 if __name__ == "__main__":
     problem_dir = Path(__file__).parent / "test_problems"
-    n_matrix = 512
+    n_matrix = 2000
     bandwidth_matrix = 3
-    seed = 2
+    seed = 42
     debug = True
     preconditioned = True
     A, x, b = generate_spd_banded_problem(n_matrix, bandwidth_matrix, seed, 
