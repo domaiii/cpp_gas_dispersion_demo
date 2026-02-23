@@ -147,9 +147,9 @@ int main() {
         std::cout << "\n=== Fixed-point SpMV demo ===\n";
         const char* testcase_path = nullptr;
         const char* candidates[] = {
-            "testcase.bin",
-            "tests/testcase.bin",
-            "../tests/testcase.bin",
+            "testcase_preconditioned.bin",
+            "tests/testcase_preconditioned.bin",
+            "../tests/testcase_preconditioned.bin",
         };
         for (const char* p : candidates) {
             if (std::filesystem::exists(p)) {

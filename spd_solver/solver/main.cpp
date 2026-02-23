@@ -15,7 +15,7 @@ int main()
 
     // ---------- load problem ----------
 
-    csr_problem_from_file("../spd_problem_generator/test_problems/n256_sp2.72.bin", prob);
+    csr_problem_from_file("../spd_problem_generator/test_problems/n256_sp2.72_prec.bin", prob);
 
     std::cout
         << "Loaded matrix: n="
@@ -23,7 +23,8 @@ int main()
         << " nnz=" << prob.A.nnz
         << "\n";
 
-    auto res = cg_solve(prob, x_sol, cg_ws);
+    auto params = CGParams{N_MAX, 1e-3, true};
+    auto res = cg_solve(prob, x_sol, cg_ws, params);
 
     std::cout <<
         "residual_norm = " << res.residual_norm << "\n" <<

@@ -3,7 +3,28 @@ import numpy as np
 import scipy.sparse as sp
 from pathlib import Path
 
-def generate_spd_banded_problem(n: int, bandwidth: int, seed: int = None, debug: bool = False):
+def _apply_row_sum_preconditioner(
+    A: np.ndarray, x: np.ndarray, b: np.ndarray, eps: float = 1e-12
+):
+    # D = M^{-1/2}, with M_kk = sum_j |A_kj|
+    row_sums = np.sum(np.abs(A), axis=1).astype(np.float32)
+    row_sums = np.maximum(row_sums, np.float32(eps))
+    d = (1.0 / np.sqrt(row_sums)).astype(np.float32)
+
+    # A_hat = D A D, b_hat = D b, x_hat = D^{-1} x
+    A_hat = (d[:, None] * A * d[None, :]).astype(np.float32)
+    b_hat = (d * b).astype(np.float32)
+    x_hat = (x / d).astype(np.float32)
+    return A_hat, x_hat, b_hat
+
+
+def generate_spd_banded_problem(
+    n: int,
+    bandwidth: int,
+    seed: int = None,
+    debug: bool = False,
+    preconditioned: bool = False,
+):
     if seed is not None:
         np.random.seed(seed)
 
@@ -26,8 +47,11 @@ def generate_spd_banded_problem(n: int, bandwidth: int, seed: int = None, debug:
     row_sums = np.sum(np.abs(A), axis=1)
     A /= np.max(row_sums)
 
-    x = np.random.uniform(-1.0, 1.0, size=n)
-    b = A @ x
+    x = np.random.uniform(-1.0, 1.0, size=n).astype(np.float32)
+    b = (A @ x).astype(np.float32)
+
+    if preconditioned:
+        A, x, b = _apply_row_sum_preconditioner(A, x, b)
 
     if debug:
         np.set_printoptions(precision=4, suppress=True)
@@ -59,12 +83,14 @@ def generate_spd_banded_problem(n: int, bandwidth: int, seed: int = None, debug:
             print("\nVector b:")
             print(b)
 
+        print(f"\npreconditioned = {preconditioned}")
         print("========================\n")
 
     return sp.csr_matrix(A), x, b
 
 
-def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: np.ndarray):
+def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: np.ndarray, 
+                        preconditioned: bool = False):
     os.makedirs(base_dir, exist_ok=True)
 
     A_csr = A_csr.tocsr()
@@ -72,8 +98,8 @@ def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: 
     n = A_csr.shape[0]
     nnz = A_csr.nnz
     sparsity = nnz / (n * n) * 100.0
-
-    filename = f"n{n}_sp{sparsity:.2f}.bin"
+    prec = "_prec" if preconditioned else ""
+    filename = f"n{n}_sp{sparsity:.2f}{prec}.bin"
     filepath = os.path.join(base_dir, filename)
 
     with open(filepath, "wb") as f:
@@ -95,5 +121,11 @@ def save_problem_binary(base_dir: Path, A_csr: sp.csr_matrix, x: np.ndarray, b: 
 
 if __name__ == "__main__":
     problem_dir = Path(__file__).parent / "test_problems"
-    A, x, b = generate_spd_banded_problem(2000, 4, 24, True)
-    save_problem_binary(problem_dir, A, x, b)
+    n_matrix = 512
+    bandwidth_matrix = 3
+    seed = 2
+    debug = True
+    preconditioned = True
+    A, x, b = generate_spd_banded_problem(n_matrix, bandwidth_matrix, seed, 
+                                          debug, preconditioned)
+    save_problem_binary(problem_dir, A, x, b, preconditioned)
