@@ -1,13 +1,15 @@
-#include "csr.hpp"
+#include "utils.hpp"
 #include "fixed_point.hpp"
 #include "cg.hpp"
 
 #include <iostream>
 #include <cmath>
 
-static CSRLinearProblem<fixed_point> prob{};
-static CGWorkspace<fixed_point> cg_ws{};
-static fixed_point x_sol[N_MAX]{};
+using DecimalType = fixed_point; 
+
+static CSRLinearProblem<DecimalType> prob{};
+static CGWorkspace<DecimalType> cg_ws{};
+static DecimalType x_sol[N_MAX]{};
 
 int main()
 {
@@ -26,7 +28,7 @@ int main()
     CGParams params{};
     // Max iteration, tolerance criteria and initial guess
     params.max_iters = N_MAX;
-    params.tol = 1e-3f;
+    params.tol = 1e-6f;
     params.zero_initial_guess = true;
 
     // Runtime diagnostics
@@ -52,8 +54,8 @@ int main()
 
     std::cout << "\nCompare solved x vs reference x:\n";
     for (size_t i = 0; i < prob.A.n; ++i) {
-        const float xhat = x_sol[i].to_float();
-        const float xref = prob.x[i].to_float();
+        const float xhat = cg_value_to_float(x_sol[i]);
+        const float xref = cg_value_to_float(prob.x[i]);
         const float err = std::abs(xhat - xref);
 
         if (err > max_abs_err) {

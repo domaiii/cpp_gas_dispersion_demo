@@ -6,7 +6,7 @@
 #include <ostream>
 #include <type_traits>
 
-#include "csr.hpp"
+#include "utils.hpp"
 
 template<typename T>
 struct CGWorkspace
@@ -27,6 +27,9 @@ struct CGParams
     bool enable_alpha_beta_clipping = false;
     float alpha_max = 3.0f;
     float beta_max = 1.0f;
+    bool enable_stagnation_stop = true;
+    uint32_t stagnation_window = 8;
+    float min_relative_improvement = 1e-1f;
 };
 
 enum class CGStatus : uint8_t
@@ -34,6 +37,7 @@ enum class CGStatus : uint8_t
     converged = 0,
     max_iters_reached = 1,
     breakdown = 2,
+    stagnated = 3,
 };
 
 inline const char* to_string(CGStatus status)
@@ -45,6 +49,8 @@ inline const char* to_string(CGStatus status)
             return "max_iters_reached";
         case CGStatus::breakdown:
             return "breakdown";
+        case CGStatus::stagnated:
+            return "stagnated";
         default:
             return "unknown";
     }
@@ -133,6 +139,8 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
     float max_abs_Ap_seen = 0.0f;
     float max_abs_alpha_seen = 0.0f;
     float max_abs_beta_seen = 0.0f;
+    float prev_residual_norm = result.residual_norm;
+    uint32_t stagnation_count = 0;
 
     for (uint32_t k = 0; k < params.max_iters; ++k) {
         spmv(prob.A, ws.p, ws.Ap);
@@ -172,6 +180,50 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
         }
         result.residual_norm = std::sqrt(rr);
         result.iterations = k + 1;
+        if (result.residual_norm <= params.tol) {
+            if (params.enable_debug_log && params.enable_bound_checks) {
+                std::cout
+                    << "[BOUND_SUMMARY] max|x|=" << max_abs_x_seen
+                    << " max|r|=" << max_abs_r_seen
+                    << " max|p|=" << max_abs_p_seen
+                    << " max|Ap|=" << max_abs_Ap_seen
+                    << " max|alpha|=" << max_abs_alpha_seen
+                    << " max|beta|=" << max_abs_beta_seen
+                    << (direction_bound_violated ? " direction_bound=ERROR" : " direction_bound=OK")
+                    << (direction_bound_violated ? " first_violation_iter=" : "")
+                    << (direction_bound_violated ? std::to_string(first_violation_iter) : "")
+                    << "\n";
+            }
+            result.status = CGStatus::converged;
+            return result;
+        }
+        {
+            const float rel_improve =
+                (prev_residual_norm - result.residual_norm) /
+                std::max(prev_residual_norm, 1e-20f);
+            if (rel_improve < params.min_relative_improvement) {
+                ++stagnation_count;
+            } else {
+                stagnation_count = 0;
+            }
+            prev_residual_norm = result.residual_norm;
+        }
+
+        if (params.enable_stagnation_stop &&
+            params.stagnation_window > 0 &&
+            stagnation_count >= params.stagnation_window) {
+            if (params.enable_debug_log) {
+                std::cout
+                    << "[CG] stagnation stop at iter " << (k + 1)
+                    << " residual_norm=" << result.residual_norm
+                    << " window=" << params.stagnation_window
+                    << " min_rel_improve=" << params.min_relative_improvement
+                    << "\n";
+            }
+            result.status = CGStatus::stagnated;
+            return result;
+        }
+
         float max_abs_x = 0.0f;
         float max_abs_r = 0.0f;
         float max_abs_p = 0.0f;
@@ -224,24 +276,6 @@ CGResult cg_solve(const CSRLinearProblem<T>& prob,
                     << (direction_bound_violated ? " bound=VIOLATED" : " bound=OK");
             }
             std::cout << "\n";
-        }
-
-        if (result.residual_norm <= params.tol) {
-            if (params.enable_debug_log && params.enable_bound_checks) {
-                std::cout
-                    << "[BOUND_SUMMARY] max|x|=" << max_abs_x_seen
-                    << " max|r|=" << max_abs_r_seen
-                    << " max|p|=" << max_abs_p_seen
-                    << " max|Ap|=" << max_abs_Ap_seen
-                    << " max|alpha|=" << max_abs_alpha_seen
-                    << " max|beta|=" << max_abs_beta_seen
-                    << (direction_bound_violated ? " direction_bound=ERROR" : " direction_bound=OK")
-                    << (direction_bound_violated ? " first_violation_iter=" : "")
-                    << (direction_bound_violated ? std::to_string(first_violation_iter) : "")
-                    << "\n";
-            }
-            result.status = CGStatus::converged;
-            return result;
         }
 
         float beta = rho_new / rho;
