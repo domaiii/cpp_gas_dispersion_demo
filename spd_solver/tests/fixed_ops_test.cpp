@@ -1,6 +1,7 @@
 // #define DEBUG_FIXED 
 #include "fixed_point.hpp"
 #include "csr.hpp"
+#include "cg.hpp"
 #include <iomanip>
 #include <iostream>
 #include <cmath>
@@ -8,16 +9,17 @@
 #include <climits>
 #include <filesystem>
 
-static constexpr float EPS = 2e-3;
+static constexpr float EPS = 1e-3;
 static CSRLinearProblem<fixed_point> prob{};
 static fixed_point y[N_MAX]{};
 
 void check_close(float ref, float got, const char* msg) {
+    assert(std::abs(ref - got) < EPS);
     std::cout << std::left << std::setw(28) << msg << "OK  "
               << "ref=" << std::setw(8) << ref 
               << " got=" << std::setw(8) << got 
               << " err=" << std::abs(ref - got) << "\n";
-    assert(std::abs(ref - got) < EPS);
+    
 }
 
 void check_ok(const char* msg, const char* extra = "") {
@@ -178,6 +180,44 @@ int main() {
         }
         check_ok("spmv() test A*x = b");
     
+    }
+
+    // ---------- scale + direction ----------
+    {
+        std::cout << "\n=== Scale + direction tests ===\n";
+
+        fixed_point v[3] = { fixed_point(3.0f), fixed_point(4.0f), fixed_point(0.0f) };
+        ScaledDirectionVector<fixed_point> sv{};
+        cg_make_scaled_direction(v, 3, sv);
+
+        check_close(5.0f, sv.scale, "Scale-dir norm as scale");
+        check_close(0.6f, sv.dir[0].to_float(), "Scale-dir d0");
+        check_close(0.8f, sv.dir[1].to_float(), "Scale-dir d1");
+        check_close(0.0f, sv.dir[2].to_float(), "Scale-dir d2");
+
+        fixed_point v_rec[3]{};
+        cg_reconstruct_from_scaled_direction(sv, v_rec, 3);
+        check_close(3.0f, v_rec[0].to_float(), "Scale-dir recon v0");
+        check_close(4.0f, v_rec[1].to_float(), "Scale-dir recon v1");
+        check_close(0.0f, v_rec[2].to_float(), "Scale-dir recon v2");
+    }
+
+    // ---------- scale + direction axpy ----------
+    {
+        fixed_point x_raw[2] = { fixed_point(1.0f), fixed_point(2.0f) };
+        fixed_point d_raw[2] = { fixed_point(0.5f), fixed_point(-1.0f) };
+
+        ScaledDirectionVector<fixed_point> sx{};
+        ScaledDirectionVector<fixed_point> sd{};
+        ScaledDirectionVector<fixed_point> sout{};
+        cg_make_scaled_direction(x_raw, 2, sx);
+        cg_make_scaled_direction(d_raw, 2, sd);
+        cg_scaled_direction_axpy(sx, 2.0f, sd, sout, 2);
+
+        fixed_point out_raw[2]{};
+        cg_reconstruct_from_scaled_direction(sout, out_raw, 2);
+        check_close(2.0f, out_raw[0].to_float(), "Scale-dir AXPY v0");
+        check_close(0.0f, out_raw[1].to_float(), "Scale-dir AXPY v1");
     }
 
     std::cout << "\nALL TESTS PASSED\n";

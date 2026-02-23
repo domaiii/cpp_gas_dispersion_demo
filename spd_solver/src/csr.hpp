@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <fstream>
 #include <stdexcept>
@@ -30,6 +31,94 @@ struct CSRLinearProblem
     T x[N_MAX]{};
     T b[N_MAX]{};
 };
+
+template<typename T>
+struct ScaledDirectionVector
+{
+    float scale = 0.0f;
+    T dir[N_MAX]{};
+};
+
+template<typename T>
+inline float sd_value_to_float(T v)
+{
+    if constexpr (std::is_same_v<T, fixed_point>) {
+        return v.to_float();
+    } else {
+        return static_cast<float>(v);
+    }
+}
+
+// Build v = scale * dir with ||dir||_2 <= 1 (up to quantization error).
+template<typename T>
+inline void cg_make_scaled_direction(const T* v,
+                                     uint32_t n,
+                                     ScaledDirectionVector<T>& out,
+                                     float eps = 1e-20f)
+{
+    float sum_sq = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        const float vi = sd_value_to_float(v[i]);
+        sum_sq += vi * vi;
+    }
+
+    const float norm = std::sqrt(sum_sq);
+    if (norm <= eps) {
+        out.scale = 0.0f;
+        for (uint32_t i = 0; i < n; ++i) out.dir[i] = T{};
+        return;
+    }
+
+    out.scale = norm;
+    const float inv_norm = 1.0f / norm;
+    for (uint32_t i = 0; i < n; ++i) {
+        out.dir[i] = static_cast<T>(sd_value_to_float(v[i]) * inv_norm);
+    }
+}
+
+template<typename T>
+inline void cg_reconstruct_from_scaled_direction(const ScaledDirectionVector<T>& in,
+                                                 T* v,
+                                                 uint32_t n)
+{
+    for (uint32_t i = 0; i < n; ++i) {
+        v[i] = static_cast<T>(in.scale * sd_value_to_float(in.dir[i]));
+    }
+}
+
+// out = x + alpha * d, represented again as (scale, dir).
+template<typename T>
+inline void cg_scaled_direction_axpy(const ScaledDirectionVector<T>& x,
+                                     float alpha,
+                                     const ScaledDirectionVector<T>& d,
+                                     ScaledDirectionVector<T>& out,
+                                     uint32_t n,
+                                     float eps = 1e-20f)
+{
+    float sum_sq = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        const float vi =
+            x.scale * sd_value_to_float(x.dir[i]) +
+            alpha * d.scale * sd_value_to_float(d.dir[i]);
+        sum_sq += vi * vi;
+    }
+
+    const float norm = std::sqrt(sum_sq);
+    if (norm <= eps) {
+        out.scale = 0.0f;
+        for (uint32_t i = 0; i < n; ++i) out.dir[i] = T{};
+        return;
+    }
+
+    out.scale = norm;
+    const float inv_norm = 1.0f / norm;
+    for (uint32_t i = 0; i < n; ++i) {
+        const float vi =
+            x.scale * sd_value_to_float(x.dir[i]) +
+            alpha * d.scale * sd_value_to_float(d.dir[i]);
+        out.dir[i] = static_cast<T>(vi * inv_norm);
+    }
+}
 
 template<typename T>
 inline void csr_problem_from_file(const std::string& filename,

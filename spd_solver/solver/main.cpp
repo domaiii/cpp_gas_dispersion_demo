@@ -23,7 +23,22 @@ int main()
         << " nnz=" << prob.A.nnz
         << "\n";
 
-    auto params = CGParams{N_MAX, 1e-3, true};
+    CGParams params{};
+    // Max iteration, tolerance criteria and initial guess
+    params.max_iters = N_MAX;
+    params.tol = 1e-3f;
+    params.zero_initial_guess = true;
+
+    // Runtime diagnostics
+    params.enable_debug_log = true;
+    params.enable_bound_checks = true;
+    params.direction_bound = 1.0f;
+
+    // Optional: Search direction update and step size clipping
+    params.enable_alpha_beta_clipping = false;
+    params.alpha_max = 3.0f;
+    params.beta_max = 1.0f;
+    
     auto res = cg_solve(prob, x_sol, cg_ws, params);
 
     std::cout <<
